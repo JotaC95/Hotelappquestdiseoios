@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Plus, Trash2, Users, Home as HomeIcon, UserPlus, Edit, Bed } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Users, Home as HomeIcon, UserPlus, Edit, Bed, Settings, Shield, Clock, Activity, AlertTriangle, TrendingUp, CheckCircle2, XCircle, Timer } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card } from "./ui/card";
 import { Switch } from "./ui/switch";
 import { Textarea } from "./ui/textarea";
+import { Progress } from "./ui/progress";
 
 interface RoomType {
   id: string;
@@ -35,6 +36,18 @@ interface Cleaner {
   id: string;
   name: string;
   status: 'active' | 'inactive';
+  email?: string;
+  role: 'cleaner' | 'supervisor' | 'admin';
+  shift?: 'morning' | 'afternoon' | 'night';
+}
+
+interface DefaultSettings {
+  breakTime: number;
+  maxCleaningTime: number;
+  notificationsEnabled: boolean;
+  autoAssignEnabled: boolean;
+  defaultShift: 'morning' | 'afternoon' | 'night';
+  overtimeAlertMinutes: number;
 }
 
 interface AdminPanelProps {
@@ -51,8 +64,20 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showAddRoomTypeDialog, setShowAddRoomTypeDialog] = useState(false);
   const [showEditRoomTypeDialog, setShowEditRoomTypeDialog] = useState(false);
+  const [showEditCleanerDialog, setShowEditCleanerDialog] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [selectedRoomType, setSelectedRoomType] = useState<RoomType | null>(null);
+  const [selectedCleaner, setSelectedCleaner] = useState<Cleaner | null>(null);
+
+  // Default Settings
+  const [defaultSettings, setDefaultSettings] = useState<DefaultSettings>({
+    breakTime: 15,
+    maxCleaningTime: 60,
+    notificationsEnabled: true,
+    autoAssignEnabled: false,
+    defaultShift: 'morning',
+    overtimeAlertMinutes: 5
+  });
 
   // Room Types data
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([
@@ -90,10 +115,10 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
 
   // Mock cleaners data
   const [cleaners, setCleaners] = useState<Cleaner[]>([
-    { id: "1", name: "María García", status: "active" },
-    { id: "2", name: "Juan Pérez", status: "active" },
-    { id: "3", name: "Ana Martínez", status: "active" },
-    { id: "4", name: "Carlos Ruiz", status: "active" }
+    { id: "1", name: "María García", status: "active", email: "maria.garcia@example.com", role: "cleaner", shift: "morning" },
+    { id: "2", name: "Juan Pérez", status: "active", email: "juan.perez@example.com", role: "cleaner", shift: "afternoon" },
+    { id: "3", name: "Ana Martínez", status: "active", email: "ana.martinez@example.com", role: "cleaner", shift: "night" },
+    { id: "4", name: "Carlos Ruiz", status: "active", email: "carlos.ruiz@example.com", role: "supervisor", shift: "morning" }
   ]);
 
   // Form states
@@ -105,7 +130,10 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
   });
 
   const [newCleaner, setNewCleaner] = useState({
-    name: ""
+    name: "",
+    email: "",
+    role: "cleaner" as 'cleaner' | 'supervisor' | 'admin',
+    shift: "morning" as 'morning' | 'afternoon' | 'night'
   });
 
   const [newRoomType, setNewRoomType] = useState<Partial<RoomType>>({
@@ -134,15 +162,18 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
   };
 
   const handleAddCleaner = () => {
-    if (newCleaner.name) {
+    if (newCleaner.name && newCleaner.email && newCleaner.role && newCleaner.shift) {
       const cleaner: Cleaner = {
         id: Date.now().toString(),
         name: newCleaner.name,
-        status: "active"
+        status: "active",
+        email: newCleaner.email,
+        role: newCleaner.role,
+        shift: newCleaner.shift
       };
       setCleaners([...cleaners, cleaner]);
       setShowAddCleanerDialog(false);
-      setNewCleaner({ name: "" });
+      setNewCleaner({ name: "", email: "", role: "cleaner", shift: "morning" });
     }
   };
 
@@ -289,12 +320,212 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
 
       {/* Tabs */}
       <div className="p-6">
-        <Tabs defaultValue="rooms" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+        <Tabs defaultValue="control" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="control">Control</TabsTrigger>
             <TabsTrigger value="rooms">Habitaciones</TabsTrigger>
             <TabsTrigger value="types">Tipos</TabsTrigger>
             <TabsTrigger value="staff">Personal</TabsTrigger>
           </TabsList>
+
+          {/* Control Tab - NEW */}
+          <TabsContent value="control" className="space-y-4">
+            {/* Productivity Metrics */}
+            <div>
+              <h3 className="text-xl mb-4">📊 Métricas de Productividad</h3>
+              <div className="space-y-3">
+                {cleaners.filter(c => c.role === 'cleaner').map((cleaner) => {
+                  const assignedRooms = rooms.filter(r => r.assignedTo === cleaner.name);
+                  const completedRooms = assignedRooms.filter(r => r.status === 'completed');
+                  const inProgressRooms = assignedRooms.filter(r => r.status === 'in-progress');
+                  const totalAssigned = assignedRooms.length;
+                  const efficiency = totalAssigned > 0 ? Math.round((completedRooms.length / totalAssigned) * 100) : 0;
+                  
+                  return (
+                    <Card key={cleaner.id} className="p-5 rounded-2xl">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center">
+                            {cleaner.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{cleaner.name}</h4>
+                            <p className="text-muted-foreground">
+                              {completedRooms.length}/{totalAssigned} habitaciones
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-secondary" />
+                            <span className="text-2xl">{efficiency}%</span>
+                          </div>
+                          <p className="text-muted-foreground">Eficiencia</p>
+                        </div>
+                      </div>
+                      <Progress value={efficiency} className="h-2" />
+                      <div className="flex gap-4 mt-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-secondary"></div>
+                          <span className="text-muted-foreground">{completedRooms.length} Completadas</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-primary"></div>
+                          <span className="text-muted-foreground">{inProgressRooms.length} En proceso</span>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Real-time Room Status */}
+            <div>
+              <h3 className="text-xl mb-4">🏨 Estado en Tiempo Real</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {rooms.map((room) => {
+                  const statusConfig = {
+                    'completed': { bg: 'bg-secondary/20', border: 'border-secondary', icon: CheckCircle2, color: 'text-secondary' },
+                    'in-progress': { bg: 'bg-primary/20', border: 'border-primary', icon: Timer, color: 'text-primary' },
+                    'pending': { bg: 'bg-muted', border: 'border-border', icon: Clock, color: 'text-muted-foreground' }
+                  };
+                  
+                  const config = statusConfig[room.status];
+                  const StatusIcon = config.icon;
+                  
+                  return (
+                    <Card key={room.id} className={`p-4 rounded-2xl border-2 ${config.border} ${config.bg}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-medium">Hab. {room.number}</h4>
+                          <p className="text-muted-foreground">{room.type}</p>
+                        </div>
+                        <StatusIcon className={`w-6 h-6 ${config.color}`} />
+                      </div>
+                      {room.assignedTo && (
+                        <p className="text-primary mb-2">👤 {room.assignedTo}</p>
+                      )}
+                      {room.status === 'in-progress' && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">{room.timeRemaining} min restantes</span>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Alerts Section */}
+            <div>
+              <h3 className="text-xl mb-4">⚠️ Alertas y Notificaciones</h3>
+              <div className="space-y-3">
+                {rooms
+                  .filter(r => r.status === 'in-progress' && r.timeRemaining < 10)
+                  .map((room) => (
+                    <Card key={room.id} className="p-4 rounded-2xl border-2 border-destructive/20 bg-destructive/5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-destructive/20 rounded-full flex items-center justify-center flex-shrink-0">
+                          <AlertTriangle className="w-5 h-5 text-destructive" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium">Habitación {room.number} - Tiempo crítico</h4>
+                          <p className="text-muted-foreground">
+                            Solo quedan {room.timeRemaining} minutos. Asignada a {room.assignedTo}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                
+                {rooms
+                  .filter(r => r.observations && r.status === 'pending')
+                  .map((room) => (
+                    <Card key={room.id} className="p-4 rounded-2xl border-2 border-primary/20 bg-primary/5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Activity className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium">Habitación {room.number} - Nota especial</h4>
+                          <p className="text-muted-foreground">{room.observations}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+
+                {rooms.filter(r => !r.assignedTo && r.status === 'pending').length > 0 && (
+                  <Card className="p-4 rounded-2xl border-2 border-amber-500/20 bg-amber-500/5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <XCircle className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">Habitaciones sin asignar</h4>
+                        <p className="text-muted-foreground">
+                          {rooms.filter(r => !r.assignedTo && r.status === 'pending').length} habitaciones necesitan ser asignadas
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {rooms.filter(r => r.status === 'in-progress' && r.timeRemaining < 10).length === 0 &&
+                 rooms.filter(r => r.observations && r.status === 'pending').length === 0 &&
+                 rooms.filter(r => !r.assignedTo && r.status === 'pending').length === 0 && (
+                  <Card className="p-6 rounded-2xl text-center">
+                    <CheckCircle2 className="w-12 h-12 text-secondary mx-auto mb-2" />
+                    <p className="text-muted-foreground">No hay alertas en este momento</p>
+                  </Card>
+                )}
+              </div>
+            </div>
+
+            {/* Immediate Tasks */}
+            <div>
+              <h3 className="text-xl mb-4">🔥 Tareas Inmediatas</h3>
+              <div className="space-y-3">
+                {rooms
+                  .filter(r => r.status === 'pending' && r.observations)
+                  .slice(0, 3)
+                  .map((room) => (
+                    <Card key={room.id} className="p-5 rounded-2xl">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium">Habitación {room.number}</h4>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                              Urgente
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground mb-2">{room.type} • {room.estimatedTime} min</p>
+                          <p className="text-muted-foreground">📝 {room.observations}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="bg-primary rounded-xl"
+                          onClick={() => {
+                            setSelectedRoom(room);
+                            setShowAssignDialog(true);
+                          }}
+                        >
+                          Asignar
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                
+                {rooms.filter(r => r.status === 'pending' && r.observations).length === 0 && (
+                  <Card className="p-6 rounded-2xl text-center">
+                    <CheckCircle2 className="w-12 h-12 text-secondary mx-auto mb-2" />
+                    <p className="text-muted-foreground">No hay tareas urgentes pendientes</p>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
 
           {/* Rooms Tab */}
           <TabsContent value="rooms" className="space-y-4">
@@ -457,15 +688,38 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
                 const assignedRooms = rooms.filter(r => r.assignedTo === cleaner.name);
                 const completedRooms = assignedRooms.filter(r => r.status === 'completed');
                 
+                const roleLabels = {
+                  'cleaner': '🧹 Limpieza',
+                  'supervisor': '👁️ Supervisor',
+                  'admin': '⚙️ Admin'
+                };
+
+                const shiftLabels = {
+                  'morning': '🌅 Mañana',
+                  'afternoon': '☀️ Tarde',
+                  'night': '🌙 Noche'
+                };
+                
                 return (
                   <Card key={cleaner.id} className="p-5 rounded-2xl">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center flex-shrink-0">
                           {cleaner.name.split(' ').map(n => n[0]).join('')}
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <h3 className="text-lg mb-1">{cleaner.name}</h3>
+                          <p className="text-muted-foreground mb-2">{cleaner.email}</p>
+                          <div className="flex gap-2 flex-wrap mb-2">
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                              {roleLabels[cleaner.role]}
+                            </Badge>
+                            {cleaner.shift && (
+                              <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
+                                {shiftLabels[cleaner.shift]}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-muted-foreground">
                             {assignedRooms.length} habitaciones asignadas • {completedRooms.length} completadas
                           </p>
@@ -771,9 +1025,45 @@ export function AdminPanel({ onBack, rooms, onAddRoom, onDeleteRoom, onUpdateRoo
                 id="cleaner-name"
                 placeholder="Ej: María González"
                 value={newCleaner.name}
-                onChange={(e) => setNewCleaner({ name: e.target.value })}
+                onChange={(e) => setNewCleaner({ ...newCleaner, name: e.target.value })}
                 className="rounded-xl"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cleaner-email">Correo electrónico</Label>
+              <Input
+                id="cleaner-email"
+                placeholder="Ej: maria.gonzalez@example.com"
+                value={newCleaner.email}
+                onChange={(e) => setNewCleaner({ ...newCleaner, email: e.target.value })}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cleaner-role">Rol</Label>
+              <Select value={newCleaner.role} onValueChange={(value: 'cleaner' | 'supervisor' | 'admin') => setNewCleaner({ ...newCleaner, role: value })}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Selecciona un rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cleaner">🧹 Limpieza</SelectItem>
+                  <SelectItem value="supervisor">👁️ Supervisor</SelectItem>
+                  <SelectItem value="admin">⚙️ Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cleaner-shift">Turno</Label>
+              <Select value={newCleaner.shift} onValueChange={(value: 'morning' | 'afternoon' | 'night') => setNewCleaner({ ...newCleaner, shift: value })}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Selecciona un turno" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="morning">🌅 Mañana (07:00 - 15:00)</SelectItem>
+                  <SelectItem value="afternoon">☀️ Tarde (15:00 - 23:00)</SelectItem>
+                  <SelectItem value="night">🌙 Noche (23:00 - 07:00)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="flex gap-3">
