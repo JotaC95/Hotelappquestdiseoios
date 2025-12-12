@@ -5,7 +5,7 @@ import { Label } from "./ui/label";
 import { CreditCard, LogIn } from "lucide-react";
 
 interface LoginScreenProps {
-  onLogin: (role: 'cleaner' | 'supervisor' | 'admin' | 'houseman' | 'maintenance') => void;
+  onLogin: (role: 'cleaner' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' | 'reception' | 'administrator') => void;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -17,7 +17,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     if (username && password) {
       // Simulate login based on username
       const lowerUsername = username.toLowerCase();
-      let role: 'cleaner' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' = 'cleaner';
+      let role: 'cleaner' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' | 'reception' | 'administrator' = 'cleaner';
       
       if (lowerUsername.includes('admin')) {
         role = 'admin';
@@ -27,6 +27,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         role = 'houseman';
       } else if (lowerUsername.includes('maint') || lowerUsername.includes('mantenimiento')) {
         role = 'maintenance';
+      } else if (lowerUsername.includes('reception')) {
+        role = 'reception';
+      } else if (lowerUsername.includes('administrator')) {
+        role = 'administrator';
       }
       
       onLogin(role);
@@ -136,6 +140,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             <p>🧑‍🔧 <span className="text-primary">houseman</span> - Houseman Panel</p>
             <p>🔧 <span className="text-primary">maintenance</span> - Maintenance Panel</p>
             <p>🧹 <span className="text-primary">cleaner</span> - Cleaner Panel</p>
+            <p>💼 <span className="text-primary">reception</span> - Reception Panel</p>
+            <p>🔑 <span className="text-primary">administrator</span> - Administrator Panel</p>
           </div>
         </div>
       </div>

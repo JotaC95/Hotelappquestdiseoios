@@ -7,13 +7,15 @@ import { SupervisorPanel } from "./components/SupervisorPanel";
 import { AdminPanel } from "./components/AdminPanel";
 import { HousemanPanel } from "./components/HousemanPanel";
 import { MaintenancePanel } from "./components/MaintenancePanel";
+import { ReceptionPanel } from "./components/ReceptionPanel";
+import { AdministratorPanel } from "./components/AdministratorPanel";
 import { InventorySection } from "./components/InventorySection";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "./components/ui/sheet";
 import { Button } from "./components/ui/button";
 import { User, BarChart3, LogOut, Home } from "lucide-react";
 
-type Screen = 'login' | 'dashboard' | 'room-detail' | 'summary' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' | 'alerts' | 'inventory';
-type UserRole = 'cleaner' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' | null;
+type Screen = 'login' | 'dashboard' | 'room-detail' | 'summary' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' | 'alerts' | 'inventory' | 'reception' | 'administrator';
+type UserRole = 'cleaner' | 'supervisor' | 'admin' | 'houseman' | 'maintenance' | 'reception' | 'administrator' | null;
 
 interface GuestInfo {
   isPresent: boolean;
@@ -443,6 +445,10 @@ export default function App() {
       setCurrentScreen('houseman');
     } else if (role === 'maintenance') {
       setCurrentScreen('maintenance');
+    } else if (role === 'reception') {
+      setCurrentScreen('reception');
+    } else if (role === 'administrator') {
+      setCurrentScreen('administrator');
     } else {
       setCurrentScreen('dashboard');
     }
@@ -650,6 +656,24 @@ export default function App() {
               }
             }}
             userRole={userRole === 'houseman' ? 'houseman' : 'admin'}
+          />
+        );
+      
+      case 'reception':
+        return (
+          <ReceptionPanel 
+            onBack={() => setCurrentScreen('login')}
+            rooms={rooms}
+            alerts={getAllAlerts()}
+            onUpdateRoom={handleUpdateRoom}
+          />
+        );
+      
+      case 'administrator':
+        return (
+          <AdministratorPanel 
+            onBack={() => setCurrentScreen('login')}
+            rooms={rooms}
           />
         );
       
